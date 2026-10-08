@@ -81,9 +81,9 @@ def build_model(args, checkpoint_path, expect_lora):
         alpha = args.lora_alpha
 
     contains_lora = any('.parametrizations.weight.' in key for key in state)
-    contains_ffn_lora = any(
-        key.startswith('encoder.layers.')
-        and '.parametrizations.weight.' in key
+    contains_output_lora = any(
+        key.startswith('backbone_features.')
+        and '.attn.proj.parametrizations.weight.' in key
         for key in state
     )
     if expect_lora:
@@ -99,8 +99,12 @@ def build_model(args, checkpoint_path, expect_lora):
 
     model = getattr(models, args.model_name)(pretrained=False)
     if expect_lora:
-        # Q/V-only checkpoints created before MAN FFN LoRA remain evaluable.
-        model.enable_lora(rank, alpha, include_ffn=contains_ffn_lora)
+        # Q/V-only checkpoints created before output LoRA remain evaluable.
+        model.enable_lora(
+            rank,
+            alpha,
+            include_output=contains_output_lora,
+        )
     model.load_state_dict(state)
     return model
 

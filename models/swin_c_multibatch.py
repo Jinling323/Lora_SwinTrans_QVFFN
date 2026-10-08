@@ -10,7 +10,10 @@ from .transformer_cosine_multibatch import (
     TransformerEncoder,
     TransformerEncoderLayer,
 )
-from .swin_lora import add_man_ffn_lora, add_swin_qv_lora
+from .swin_lora import (
+    add_swin_output_lora,
+    add_swin_qv_lora,
+)
 
 
 __all__ = ["swin_t_trans", "swin_l_trans"]
@@ -134,13 +137,14 @@ class SwinTransMultiBatch(nn.Module):
         density = self.reg_layer_0(x)
         return torch.relu(density), consistency_features
 
-    def enable_lora(self, rank=4, alpha=4.0, include_ffn=True):
-        """Freeze the baseline and adapt Swin Q/V plus MAN FFN weights."""
+    def enable_lora(self, rank=4, alpha=4.0, include_output=True):
+        """Freeze the baseline and adapt Swin Q/V/O attention weights."""
         for parameter in self.parameters():
             parameter.requires_grad_(False)
         swin_count = add_swin_qv_lora(self.backbone_features, rank, alpha)
-        ffn_count = add_man_ffn_lora(self.encoder, rank, alpha) if include_ffn else 0
-        return swin_count, ffn_count
+        output_count = (add_swin_output_lora(
+            self.backbone_features, rank, alpha) if include_output else 0)
+        return swin_count, output_count
 
 
 def swin_t_trans(pretrained=True, pretrained_path=None):

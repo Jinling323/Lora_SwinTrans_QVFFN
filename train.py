@@ -1,4 +1,4 @@
-"""Train Swin + MAN, then adapt Swin Q/V and MAN FFN weights with LoRA."""
+"""Train Swin + MAN, then adapt Swin attention Q/V/O weights with LoRA."""
 
 import argparse
 import copy

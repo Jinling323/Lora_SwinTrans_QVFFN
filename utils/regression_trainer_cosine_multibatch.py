@@ -110,11 +110,12 @@ class RegTrainer(Trainer):
                         raise ValueError('Baseline checkpoint model name does not match')
                 state = checkpoint.get('model_state_dict', checkpoint)
                 self.model.load_state_dict(state)
-            swin_count, ffn_count = self.model.enable_lora(
+            swin_count, output_count = self.model.enable_lora(
                 args.lora_rank, args.lora_alpha)
             logging.info(
-                'LoRA added to %d Swin attention blocks and %d MAN FFN projections',
-                swin_count, ffn_count)
+                'LoRA added to Q/V in %d Swin attention blocks and to %d '
+                'attention output projections',
+                swin_count, output_count)
         self.model.to(self.device)
         trainable = [parameter for parameter in self.model.parameters()
                      if parameter.requires_grad]

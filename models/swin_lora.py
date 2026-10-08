@@ -1,4 +1,4 @@
-"""Low-rank updates for Swin attention and the MAN Transformer FFN."""
+"""Low-rank updates for Swin attention projections."""
 
 import torch
 from torch import nn
@@ -58,27 +58,30 @@ def add_swin_qv_lora(features, rank, alpha):
     return len(blocks)
 
 
-def add_man_ffn_lora(encoder, rank, alpha):
-    """Attach LoRA to both FFN projections in every MAN encoder layer."""
+def add_swin_output_lora(features, rank, alpha):
+    """Attach LoRA to every W-MSA/SW-MSA output projection."""
+    blocks = [module for module in features.modules()
+              if hasattr(module, 'attn') and hasattr(module.attn, 'qkv')]
+    if not blocks:
+        raise ValueError('No Swin attention blocks found')
+
     projections = []
-    for layer in encoder.layers:
-        for name in ('linear1', 'linear2'):
-            linear = getattr(layer, name, None)
-            if not isinstance(linear, nn.Linear):
-                raise ValueError(
-                    'MAN Transformer layer {} must be nn.Linear'.format(name))
-            if parametrize.is_parametrized(linear, 'weight'):
-                raise ValueError(
-                    'LoRA is already attached to MAN Transformer {}'.format(name))
-            projections.append(linear)
+    for block in blocks:
+        projection = getattr(block.attn, 'proj', None)
+        if not isinstance(projection, nn.Linear):
+            raise ValueError('Swin attention output projection must be nn.Linear')
+        if projection.in_features != projection.out_features:
+            raise ValueError('Swin attention output projection must preserve channels')
+        if parametrize.is_parametrized(projection, 'weight'):
+            raise ValueError(
+                'LoRA is already attached to a Swin attention output projection')
+        projections.append(projection)
 
-    if not projections:
-        raise ValueError('No MAN Transformer FFN projections found')
-
-    for linear in projections:
+    for projection in projections:
         parametrize.register_parametrization(
-            linear,
+            projection,
             'weight',
-            LinearLoRA(linear.in_features, linear.out_features, rank, alpha),
+            LinearLoRA(
+                projection.in_features, projection.out_features, rank, alpha),
         )
     return len(projections)

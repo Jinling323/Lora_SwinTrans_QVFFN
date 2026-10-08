@@ -16,10 +16,10 @@ The CCST count head and CCST trainer are not used.
 Install dependencies with `pip install -r requirements.txt`. By default,
 `python train.py` first trains the full 24-block baseline on `SHA/clean/train`
 and selects its best checkpoint on `SHA/clean/val`. It then freezes that
-baseline and trains Q/V LoRA in all 24 Swin attention blocks plus LoRA on the
-four FFN projections in the two-layer MAN Transformer on
+baseline and trains Q/V plus output-projection LoRA in all 24 Swin attention
+blocks on
 `SHA/hazy/train`, selecting the best result on `SHA/mix/val`. The MAN head
-and custom Transformer base weights stay frozen during LoRA training.
+and custom Transformer stay frozen during LoRA training.
 
 ```bash
 python train.py
