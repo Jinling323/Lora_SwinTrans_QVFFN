@@ -1,4 +1,4 @@
-"""Low-rank updates for Swin attention projections."""
+"""Low-rank updates for Swin attention and optional MAN FFN projections."""
 
 import torch
 from torch import nn
@@ -76,6 +76,33 @@ def add_swin_output_lora(features, rank, alpha):
             raise ValueError(
                 'LoRA is already attached to a Swin attention output projection')
         projections.append(projection)
+
+    for projection in projections:
+        parametrize.register_parametrization(
+            projection,
+            'weight',
+            LinearLoRA(
+                projection.in_features, projection.out_features, rank, alpha),
+        )
+    return len(projections)
+
+
+def add_man_ffn_lora(encoder, rank, alpha):
+    """Attach LoRA to both FFN projections in every MAN encoder layer."""
+    projections = []
+    for layer in encoder.layers:
+        for name in ('linear1', 'linear2'):
+            linear = getattr(layer, name, None)
+            if not isinstance(linear, nn.Linear):
+                raise ValueError(
+                    'MAN Transformer layer {} must be nn.Linear'.format(name))
+            if parametrize.is_parametrized(linear, 'weight'):
+                raise ValueError(
+                    'LoRA is already attached to MAN Transformer {}'.format(name))
+            projections.append(linear)
+
+    if not projections:
+        raise ValueError('No MAN Transformer FFN projections found')
 
     for projection in projections:
         parametrize.register_parametrization(
